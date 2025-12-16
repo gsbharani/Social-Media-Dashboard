@@ -12,6 +12,7 @@
     button{padding:6px 10px;margin:3px;cursor:pointer}
     .charts {display:grid; grid-template-columns:1fr; gap:20px; margin-top:20px;}
     @media(min-width:900px){.charts{grid-template-columns:repeat(3,1fr);}}
+    #loading{font-weight:bold;color:blue;margin:10px;display:none;}
   </style>
 </head>
 <body>
@@ -23,8 +24,11 @@
   <button onclick="loadSearch()">Search</button>
   <button onclick="setPreset(7)">Last 7 Days</button>
   <button onclick="setPreset(30)">Last 30 Days</button>
-  <button onclick="loadTrending()">🔥 Trending</button>
+  <button onclick="loadTrending()">🔥 Trending Videos</button>
+  <button onclick="loadTNPolitics()">🔥 TN Politics Trending</button>
 </div>
+
+<div id="loading">Loading videos...</div>
 
 <div class="box charts">
   <canvas id="viewsChart"></canvas>
@@ -62,26 +66,48 @@ function setPreset(days){
 }
 
 async function loadSearch(){
+  document.getElementById("loading").style.display="block";
   const q = document.getElementById("query").value;
   const s = document.getElementById("query").dataset.start;
   const e = document.getElementById("query").dataset.end;
-  if(!s || !e) setPreset(7);
+  if(!s||!e) setPreset(7);
 
-  const r = await fetch(`/search?query=${q}&start=${s}&end=${e}`);
-  const d = await r.json();
-  renderCharts(d.videos);
-  renderTable(d.videos);
+  try {
+    const r = await fetch(`/search?query=${q}&start=${s}&end=${e}`);
+    const d = await r.json();
+    renderCharts(d.videos);
+    renderTable(d.videos);
+  } catch(err){
+    alert("Failed to load: "+err);
+  } finally {
+    document.getElementById("loading").style.display="none";
+  }
 }
 
 async function loadTrending(){
-  const r = await fetch("/trending");
-  const d = await r.json();
-  renderCharts(d.videos);
-  renderTable(d.videos);
+  document.getElementById("loading").style.display="block";
+  try {
+    const r = await fetch("/trending");
+    const d = await r.json();
+    renderCharts(d.videos);
+    renderTable(d.videos);
+  } catch(err){ alert(err) }
+  finally{ document.getElementById("loading").style.display="none"; }
+}
+
+async function loadTNPolitics(){
+  document.getElementById("loading").style.display="block";
+  try {
+    const r = await fetch("/tn-politics");
+    const d = await r.json();
+    renderCharts(d.videos);
+    renderTable(d.videos);
+  } catch(err){ alert(err) }
+  finally{ document.getElementById("loading").style.display="none"; }
 }
 
 function renderTable(videos){
-  const rows = document.getElementById("rows");
+  const rows=document.getElementById("rows");
   rows.innerHTML="";
   videos.forEach(v=>{
     rows.innerHTML+=`
@@ -93,36 +119,35 @@ function renderTable(videos){
         <td>${v.likes}</td>
         <td>${v.comments}</td>
         <td><a href="${v.url}" target="_blank">Open</a></td>
-      </tr>
-    `;
+      </tr>`;
   });
 }
 
 function renderCharts(videos){
-  const labels = videos.map(v=>v.published);
-  const views = videos.map(v=>v.views);
-  const likes = videos.map(v=>v.likes);
-  const comments = videos.map(v=>v.comments);
+  const labels=videos.map(v=>v.published);
+  const views=videos.map(v=>v.views);
+  const likes=videos.map(v=>v.likes);
+  const comments=videos.map(v=>v.comments);
 
   if(viewsChart) viewsChart.destroy();
   if(likesChart) likesChart.destroy();
   if(commentsChart) commentsChart.destroy();
 
-  viewsChart = new Chart(document.getElementById("viewsChart"),{
+  viewsChart=new Chart(document.getElementById("viewsChart"),{
     type:"line",
-    data:{ labels, datasets:[{ label:"Views", data:views, borderColor:"blue", tension:0.3 }]},
+    data:{labels,datasets:[{label:"Views",data:views,borderColor:"blue",tension:0.3}]},
     options:{responsive:true, plugins:{legend:{position:"top"}}, scales:{y:{beginAtZero:true}}}
   });
 
-  likesChart = new Chart(document.getElementById("likesChart"),{
+  likesChart=new Chart(document.getElementById("likesChart"),{
     type:"line",
-    data:{ labels, datasets:[{ label:"Likes", data:likes, borderColor:"red", tension:0.3 }]},
+    data:{labels,datasets:[{label:"Likes",data:likes,borderColor:"red",tension:0.3}]},
     options:{responsive:true, plugins:{legend:{position:"top"}}, scales:{y:{beginAtZero:true}}}
   });
 
-  commentsChart = new Chart(document.getElementById("commentsChart"),{
+  commentsChart=new Chart(document.getElementById("commentsChart"),{
     type:"bar",
-    data:{ labels, datasets:[{ label:"Comments", data:comments, backgroundColor:"green" }]},
+    data:{labels,datasets:[{label:"Comments",data:comments,backgroundColor:"green"}]},
     options:{responsive:true, plugins:{legend:{position:"top"}}, scales:{y:{beginAtZero:true}}}
   });
 }
