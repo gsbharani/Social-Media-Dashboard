@@ -1,8 +1,4 @@
 fastapi
 uvicorn
-pandas
-openpyxl
 requests
-python-multipart
-sqlalchemy
 python-dotenv
