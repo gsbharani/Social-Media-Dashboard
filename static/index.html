@@ -97,7 +97,18 @@
 
 <!-- Chart -->
 <div class="bg-white p-4 rounded shadow mt-6">
-  <canvas id="chart" height="120"></canvas>
+  <h3 class="font-semibold mb-2">Views Trend</h3>
+  <canvas id="viewsChart" height="120"></canvas>
+</div>
+
+<div class="bg-white p-4 rounded shadow mt-6">
+  <h3 class="font-semibold mb-2">Likes Trend</h3>
+  <canvas id="likesChart" height="120"></canvas>
+</div>
+
+<div class="bg-white p-4 rounded shadow mt-6">
+  <h3 class="font-semibold mb-2">Comments Trend</h3>
+  <canvas id="commentsChart" height="120"></canvas>
 </div>
 
 <script>
@@ -131,7 +142,7 @@ document.getElementById("loadBtn").onclick = async () => {
   renderTable();
   updateSummary();
   renderKeywords();
-  drawChart();
+  drawCharts();
 };
 
 function renderTable() {
@@ -176,20 +187,61 @@ function renderKeywords() {
       .join("");
 }
 
-function drawChart() {
-  chart?.destroy();
-  chart = new Chart(document.getElementById("chart"), {
-    type: "line",
-    data: {
-      labels: videos.map(v => v.published),
-      datasets: [{
-        label: "Views",
-        data: videos.map(v => v.views),
-        borderWidth: 2
-      }]
+let viewsChart, likesChart, commentsChart;
+
+function drawCharts() {
+  viewsChart?.destroy();
+  likesChart?.destroy();
+  commentsChart?.destroy();
+
+  const labels = videos.map(v => v.published);
+
+  viewsChart = new Chart(
+    document.getElementById("viewsChart"),
+    {
+      type: "line",
+      data: {
+        labels,
+        datasets: [{
+          label: "Views",
+          data: videos.map(v => v.views),
+          borderWidth: 2
+        }]
+      }
     }
-  });
+  );
+
+  likesChart = new Chart(
+    document.getElementById("likesChart"),
+    {
+      type: "line",
+      data: {
+        labels,
+        datasets: [{
+          label: "Likes",
+          data: videos.map(v => v.likes),
+          borderWidth: 2
+        }]
+      }
+    }
+  );
+
+  commentsChart = new Chart(
+    document.getElementById("commentsChart"),
+    {
+      type: "line",
+      data: {
+        labels,
+        datasets: [{
+          label: "Comments",
+          data: videos.map(v => v.comments),
+          borderWidth: 2
+        }]
+      }
+    }
+  );
 }
+
 
 document.getElementById("exportBtn").onclick = () => {
   let csv = "Title,Channel,Date,Views,Likes,Comments\n";
