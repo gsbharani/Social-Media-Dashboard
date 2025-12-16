@@ -1,36 +1,43 @@
 <!DOCTYPE html>
 <html>
 <head>
-  <title>YouTube Data Dashboard</title>
+  <title>TN Politics YouTube Dashboard</title>
   <script src="https://cdn.jsdelivr.net/npm/chart.js"></script>
   <script src="https://cdn.tailwindcss.com"></script>
 </head>
 
-<body class="bg-gray-100 p-6 min-h-screen">
+<body class="bg-gray-100 p-6">
 
 <h1 class="text-3xl font-bold mb-6">
-  Tamil Nadu Politics – YouTube Dashboard
+  Tamil Nadu Politics – YouTube Analytics
 </h1>
 
-<div class="bg-white p-4 rounded shadow flex flex-wrap gap-4 items-end">
+<!-- Controls -->
+<div class="bg-white p-4 rounded shadow flex flex-wrap gap-3 items-end">
+
   <input id="query" class="border p-2 rounded w-64"
-         placeholder="Keyword (e.g. DMK, MK Stalin)" value="Tamil Nadu politics">
+         value="Tamil Nadu politics"
+         placeholder="Search keyword">
 
   <input id="start" type="date" class="border p-2 rounded">
   <input id="end" type="date" class="border p-2 rounded">
 
+  <button onclick="setPreset(7)" class="px-3 py-2 bg-gray-200 rounded">7 Days</button>
+  <button onclick="setPreset(30)" class="px-3 py-2 bg-gray-200 rounded">30 Days</button>
+
   <button id="searchBtn"
-    class="bg-blue-600 text-white px-6 py-2 rounded">
-    Search
+          class="bg-blue-600 text-white px-6 py-2 rounded">
+    Load Data
   </button>
 
   <button id="exportBtn"
-    class="bg-green-600 text-white px-6 py-2 rounded">
+          class="bg-green-600 text-white px-6 py-2 rounded">
     Export Excel
   </button>
+
 </div>
 
-<div id="loading" class="hidden mt-4 text-blue-600">
+<div id="loading" class="hidden mt-4 text-blue-600 font-semibold">
   Loading videos...
 </div>
 
@@ -38,37 +45,43 @@
   Total Videos: <span id="count" class="font-bold">0</span>
 </p>
 
+<!-- Table -->
 <div class="overflow-x-auto bg-white mt-4 rounded shadow">
-  <table class="w-full text-sm">
-    <thead class="bg-gray-200">
-      <tr>
-        <th class="p-2">Title</th>
-        <th class="p-2">Channel</th>
-        <th class="p-2">Date</th>
-        <th class="p-2">Views</th>
-        <th class="p-2">Likes</th>
-        <th class="p-2">Comments</th>
-        <th class="p-2">Link</th>
-      </tr>
-    </thead>
-    <tbody id="tableBody"></tbody>
-  </table>
+<table class="w-full text-sm">
+<thead class="bg-gray-200">
+<tr>
+  <th class="p-2">Title</th>
+  <th class="p-2">Channel</th>
+  <th class="p-2">Date</th>
+  <th class="p-2">Views</th>
+  <th class="p-2">Likes</th>
+  <th class="p-2">Comments</th>
+</tr>
+</thead>
+<tbody id="tableBody"></tbody>
+</table>
 </div>
 
-<div class="grid grid-cols-1 md:grid-cols-3 gap-6 mt-8">
+<!-- Charts -->
+<div class="grid grid-cols-1 md:grid-cols-2 gap-6 mt-8">
   <canvas id="viewsChart"></canvas>
   <canvas id="likesChart"></canvas>
   <canvas id="commentsChart"></canvas>
+  <canvas id="channelChart"></canvas>
 </div>
 
 <script>
 const today = new Date().toISOString().split("T")[0];
-const weekAgo = new Date(Date.now() - 7*86400000).toISOString().split("T")[0];
-start.value = weekAgo;
-end.value = today;
+setPreset(7);
 
-let viewsChart, likesChart, commentsChart;
+let viewsChart, likesChart, commentsChart, channelChart;
 let currentData = [];
+
+function setPreset(days) {
+  end.value = today;
+  start.value = new Date(Date.now() - days*86400000)
+    .toISOString().split("T")[0];
+}
 
 searchBtn.onclick = async () => {
   loading.classList.remove("hidden");
@@ -92,9 +105,6 @@ searchBtn.onclick = async () => {
       <td class="p-2 text-right">${v.views}</td>
       <td class="p-2 text-right">${v.likes}</td>
       <td class="p-2 text-right">${v.comments}</td>
-      <td class="p-2 text-center">
-        <a href="${v.url}" target="_blank" class="text-blue-600">Open</a>
-      </td>
     </tr>
   `).join("");
 
@@ -102,41 +112,64 @@ searchBtn.onclick = async () => {
 };
 
 function drawCharts(videos) {
+
   const labels = videos.map(v => v.published);
+
   const views = videos.map(v => v.views);
   const likes = videos.map(v => v.likes);
   const comments = videos.map(v => v.comments);
 
+  // Channel aggregation
+  const channelMap = {};
+  videos.forEach(v => {
+    channelMap[v.channel] = (channelMap[v.channel] || 0) + v.views;
+  });
+
+  const channelLabels = Object.keys(channelMap);
+  const channelViews = Object.values(channelMap);
+
   viewsChart?.destroy();
   likesChart?.destroy();
   commentsChart?.destroy();
+  channelChart?.destroy();
 
-  viewsChart = new Chart(viewsChartEl, {
-    type: "line",
-    data: { labels, datasets: [{ label: "Views", data: views }] }
-  });
+  viewsChart = new Chart(
+    document.getElementById("viewsChart"),
+    { type: "line", data: { labels, datasets:[{label:"Views", data:views}] } }
+  );
 
-  likesChart = new Chart(likesChartEl, {
-    type: "line",
-    data: { labels, datasets: [{ label: "Likes", data: likes }] }
-  });
+  likesChart = new Chart(
+    document.getElementById("likesChart"),
+    { type: "line", data: { labels, datasets:[{label:"Likes", data:likes}] } }
+  );
 
-  commentsChart = new Chart(commentsChartEl, {
-    type: "bar",
-    data: { labels, datasets: [{ label: "Comments", data: comments }] }
-  });
+  commentsChart = new Chart(
+    document.getElementById("commentsChart"),
+    { type: "bar", data: { labels, datasets:[{label:"Comments", data:comments}] } }
+  );
+
+  channelChart = new Chart(
+    document.getElementById("channelChart"),
+    {
+      type: "bar",
+      data: {
+        labels: channelLabels,
+        datasets: [{ label: "Views by Channel", data: channelViews }]
+      }
+    }
+  );
 }
 
 exportBtn.onclick = () => {
-  let csv = "Title,Channel,Date,Views,Likes,Comments,URL\n";
+  let csv = "Title,Channel,Date,Views,Likes,Comments\n";
   currentData.forEach(v => {
-    csv += `"${v.title}","${v.channel}",${v.published},${v.views},${v.likes},${v.comments},${v.url}\n`;
+    csv += `"${v.title}","${v.channel}",${v.published},${v.views},${v.likes},${v.comments}\n`;
   });
 
   const blob = new Blob(["\uFEFF"+csv], {type:"text/csv"});
   const a = document.createElement("a");
   a.href = URL.createObjectURL(blob);
-  a.download = "tn_politics_videos.csv";
+  a.download = "tn_politics_youtube.csv";
   a.click();
 };
 </script>
