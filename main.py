@@ -32,7 +32,7 @@ def yt(url):
 # Search YouTube
 # ---------------------------
 @app.get("/videos")
-def get_videos(query: str, start: str, end: str, max_results: int = 50):
+def get_videos(query: str, start: str, end: str, max_results: int = 500):
     query = query.lstrip("#").strip()
     if not query:
         raise HTTPException(400, "Query required")
