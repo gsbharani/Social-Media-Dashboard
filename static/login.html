@@ -1,0 +1,37 @@
+<!DOCTYPE html>
+<html>
+<head>
+  <title>Login</title>
+  <style>
+    body { font-family: Arial; background:#f4f4f4 }
+    .box {
+      width:300px; margin:120px auto;
+      background:#fff; padding:20px;
+      box-shadow:0 0 10px #ccc;
+    }
+    input, button { width:100%; padding:10px; margin-top:10px }
+  </style>
+</head>
+<body>
+  <div class="box">
+    <h3>Dashboard Login</h3>
+    <input id="u" placeholder="Username">
+    <input id="p" type="password" placeholder="Password">
+    <button onclick="login()">Login</button>
+    <p id="m" style="color:red"></p>
+  </div>
+
+<script>
+async function login(){
+  const r = await fetch("/login",{
+    method:"POST",
+    headers:{'Content-Type':'application/json'},
+    body:JSON.stringify({username:u.value,password:p.value})
+  })
+  const d = await r.json()
+  if(d.success) location.href="/"
+  else m.innerText="Invalid login"
+}
+</script>
+</body>
+</html>
