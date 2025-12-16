@@ -4,22 +4,27 @@
   <title>YouTube Analytics Dashboard</title>
   <script src="https://cdn.jsdelivr.net/npm/chart.js"></script>
   <style>
-    body { font-family: Arial; background:#f4f6f8; padding:20px }
-    .box { background:#fff; padding:15px; margin-bottom:20px; box-shadow:0 0 6px #ccc }
-    table { width:100%; border-collapse:collapse }
-    th, td { border:1px solid #ddd; padding:8px }
-    th { background:#eee }
+    body{font-family:Arial;padding:20px;background:#f4f6f8}
+    .box{background:#fff;padding:15px;margin-bottom:20px;box-shadow:0 0 6px #ccc;border-radius:6px}
+    table{width:100%;border-collapse:collapse}
+    th,td{border:1px solid #ddd;padding:8px;font-size:14px}
+    th{background:#eee}
+    button{padding:6px 10px;margin:3px;cursor:pointer}
   </style>
 </head>
 <body>
 
-<h2>📊 YouTube Video Dashboard</h2>
+<h2>📊 YouTube Analytics Dashboard</h2>
 
 <div class="box">
-  <input id="query" placeholder="Keyword or #hashtag">
-  <input type="date" id="start">
-  <input type="date" id="end">
-  <button onclick="loadData()">Search</button>
+  <input id="query" placeholder="Keyword / Hashtag">
+  <button onclick="loadSearch()">Search</button>
+  <button onclick="setPreset(7)">Last 7 Days</button>
+  <button onclick="setPreset(30)">Last 30 Days</button>
+</div>
+
+<div class="box">
+  <button onclick="loadTrending()">🔥 Trending Videos</button>
 </div>
 
 <div class="box">
@@ -46,23 +51,42 @@
 <script>
 let chart;
 
-async function loadData(){
-  const q = query.value;
-  const s = start.value;
-  const e = end.value;
-  if(!q || !s || !e) return alert("Fill all fields");
+function setPreset(days){
+  const end = new Date();
+  const start = new Date();
+  start.setDate(end.getDate()-days);
+  const format = d=>d.toISOString().slice(0,10);
+  document.getElementById("query").dataset.start = format(start);
+  document.getElementById("query").dataset.end = format(end);
+}
 
-  const r = await fetch(`/videos?query=${q}&start=${s}&end=${e}`);
+async function loadSearch(){
+  const q = document.getElementById("query").value;
+  const s = document.getElementById("query").dataset.start;
+  const e = document.getElementById("query").dataset.end;
+  if(!s || !e) setPreset(7); // default 7 days
+
+  const url = `/search?query=${q}&start=${s}&end=${e}`;
+  const r = await fetch(url);
   const d = await r.json();
+  render(d.videos);
+}
 
-  rows.innerHTML = "";
-  const labels = [];
-  const views = [];
+async function loadTrending(){
+  const r = await fetch("/trending");
+  const d = await r.json();
+  render(d.videos);
+}
 
-  d.videos.forEach(v=>{
+function render(videos){
+  const rows = document.getElementById("rows");
+  rows.innerHTML="";
+  const labels=[], views=[], likes=[];
+  videos.forEach(v=>{
     labels.push(v.published);
     views.push(v.views);
-    rows.innerHTML += `
+    likes.push(v.likes);
+    rows.innerHTML+=`
       <tr>
         <td>${v.title}</td>
         <td>${v.channel}</td>
@@ -71,18 +95,22 @@ async function loadData(){
         <td>${v.likes}</td>
         <td>${v.comments}</td>
         <td><a href="${v.url}" target="_blank">Open</a></td>
-      </tr>`;
+      </tr>
+    `;
   });
 
   if(chart) chart.destroy();
-  chart = new Chart(chartEl(), {
+  chart = new Chart(document.getElementById("chart"),{
     type:"line",
-    data:{ labels, datasets:[{ label:"Views", data:views }] }
+    data:{
+      labels,
+      datasets:[
+        {label:"Views",data:views,borderColor:"blue",tension:0.3},
+        {label:"Likes",data:likes,borderColor:"red",tension:0.3}
+      ]
+    },
+    options:{responsive:true}
   });
-}
-
-function chartEl(){
-  return document.getElementById("chart");
 }
 </script>
 
