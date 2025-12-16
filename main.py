@@ -8,7 +8,7 @@ from dotenv import load_dotenv
 load_dotenv()
 API_KEY = os.getenv("YOUTUBE_API_KEY")
 
-app = FastAPI(title="YouTube TN Politics Dashboard")
+app = FastAPI(title="YouTube Data Dashboard")
 
 app.add_middleware(
     CORSMiddleware,
@@ -30,7 +30,7 @@ def safe_get(url):
 
 
 @app.get("/search")
-def search_videos(query: str, start: str, end: str, max_results: int = 50):
+def search_videos(query: str, start: str, end: str, max_results: int = 500):
     if not query:
         raise HTTPException(400, "Query required")
 
