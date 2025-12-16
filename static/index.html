@@ -1,156 +1,82 @@
 <!DOCTYPE html>
-<html>
+<html lang="en">
 <head>
-  <title>YouTube Analytics Dashboard</title>
+  <meta charset="UTF-8">
+  <title>Tamil Nadu Politics Dashboard</title>
   <script src="https://cdn.jsdelivr.net/npm/chart.js"></script>
-  <style>
-    body{font-family:Arial;padding:20px;background:#f4f6f8}
-    .box{background:#fff;padding:15px;margin-bottom:20px;box-shadow:0 0 6px #ccc;border-radius:6px}
-    table{width:100%;border-collapse:collapse}
-    th,td{border:1px solid #ddd;padding:8px;font-size:14px}
-    th{background:#eee}
-    button{padding:6px 10px;margin:3px;cursor:pointer}
-    .charts {display:grid; grid-template-columns:1fr; gap:20px; margin-top:20px;}
-    @media(min-width:900px){.charts{grid-template-columns:repeat(3,1fr);}}
-    #loading{font-weight:bold;color:blue;margin:10px;display:none;}
-  </style>
+  <script src="https://cdn.tailwindcss.com"></script>
 </head>
-<body>
 
-<h2>📊 YouTube Analytics Dashboard</h2>
+<body class="bg-gray-100 p-6 min-h-screen">
 
-<div class="box">
-  <input id="query" placeholder="Keyword / Hashtag">
-  <button onclick="loadSearch()">Search</button>
-  <button onclick="setPreset(7)">Last 7 Days</button>
-  <button onclick="setPreset(30)">Last 30 Days</button>
-  <button onclick="loadTrending()">🔥 Trending Videos</button>
-  <button onclick="loadTNPolitics()">🔥 TN Politics Trending</button>
+<h1 class="text-3xl font-bold mb-6">
+  Tamil Nadu Politics – YouTube Trending Dashboard
+</h1>
+
+<button id="loadBtn"
+  class="bg-blue-600 text-white px-6 py-3 rounded hover:bg-blue-700">
+  Load Trending Videos
+</button>
+
+<div id="loading"
+  class="hidden mt-4 text-blue-600 font-medium">
+  Loading videos...
 </div>
 
-<div id="loading">Loading videos...</div>
-
-<div class="box charts">
-  <canvas id="viewsChart"></canvas>
-  <canvas id="likesChart"></canvas>
-  <canvas id="commentsChart"></canvas>
-</div>
-
-<div class="box">
-  <table>
-    <thead>
-      <tr>
-        <th>Title</th>
-        <th>Channel</th>
-        <th>Date</th>
-        <th>Views</th>
-        <th>Likes</th>
-        <th>Comments</th>
-        <th>Link</th>
-      </tr>
-    </thead>
-    <tbody id="rows"></tbody>
-  </table>
+<div class="grid grid-cols-1 md:grid-cols-3 gap-6 mt-10">
+  <canvas id="viewsChart" class="bg-white p-4 rounded shadow"></canvas>
+  <canvas id="likesChart" class="bg-white p-4 rounded shadow"></canvas>
+  <canvas id="commentsChart" class="bg-white p-4 rounded shadow"></canvas>
 </div>
 
 <script>
 let viewsChart, likesChart, commentsChart;
 
-function setPreset(days){
-  const end = new Date();
-  const start = new Date();
-  start.setDate(end.getDate()-days);
-  const format = d=>d.toISOString().slice(0,10);
-  document.getElementById("query").dataset.start = format(start);
-  document.getElementById("query").dataset.end = format(end);
-}
+document.getElementById("loadBtn").onclick = async () => {
+  document.getElementById("loading").classList.remove("hidden");
 
-async function loadSearch(){
-  document.getElementById("loading").style.display="block";
-  const q = document.getElementById("query").value;
-  const s = document.getElementById("query").dataset.start;
-  const e = document.getElementById("query").dataset.end;
-  if(!s||!e) setPreset(7);
+  const res = await fetch("/tn-politics");
+  let data;
 
   try {
-    const r = await fetch(`/search?query=${q}&start=${s}&end=${e}`);
-    const d = await r.json();
-    renderCharts(d.videos);
-    renderTable(d.videos);
-  } catch(err){
-    alert("Failed to load: "+err);
-  } finally {
-    document.getElementById("loading").style.display="none";
+    data = await res.json();
+  } catch (e) {
+    alert("Backend error: Invalid JSON");
+    return;
   }
-}
 
-async function loadTrending(){
-  document.getElementById("loading").style.display="block";
-  try {
-    const r = await fetch("/trending");
-    const d = await r.json();
-    renderCharts(d.videos);
-    renderTable(d.videos);
-  } catch(err){ alert(err) }
-  finally{ document.getElementById("loading").style.display="none"; }
-}
+  document.getElementById("loading").classList.add("hidden");
 
-async function loadTNPolitics(){
-  document.getElementById("loading").style.display="block";
-  try {
-    const r = await fetch("/tn-politics");
-    const d = await r.json();
-    renderCharts(d.videos);
-    renderTable(d.videos);
-  } catch(err){ alert(err) }
-  finally{ document.getElementById("loading").style.display="none"; }
-}
+  const labels = data.videos.map(v => v.published);
+  const views = data.videos.map(v => v.views);
+  const likes = data.videos.map(v => v.likes);
+  const comments = data.videos.map(v => v.comments);
 
-function renderTable(videos){
-  const rows=document.getElementById("rows");
-  rows.innerHTML="";
-  videos.forEach(v=>{
-    rows.innerHTML+=`
-      <tr>
-        <td>${v.title}</td>
-        <td>${v.channel}</td>
-        <td>${v.published}</td>
-        <td>${v.views}</td>
-        <td>${v.likes}</td>
-        <td>${v.comments}</td>
-        <td><a href="${v.url}" target="_blank">Open</a></td>
-      </tr>`;
-  });
-}
+  if (viewsChart) viewsChart.destroy();
+  if (likesChart) likesChart.destroy();
+  if (commentsChart) commentsChart.destroy();
 
-function renderCharts(videos){
-  const labels=videos.map(v=>v.published);
-  const views=videos.map(v=>v.views);
-  const likes=videos.map(v=>v.likes);
-  const comments=videos.map(v=>v.comments);
+  viewsChart = new Chart(
+    document.getElementById("viewsChart"), {
+      type: "line",
+      data: { labels, datasets: [{ label: "Views", data: views }] }
+    }
+  );
 
-  if(viewsChart) viewsChart.destroy();
-  if(likesChart) likesChart.destroy();
-  if(commentsChart) commentsChart.destroy();
+  likesChart = new Chart(
+    document.getElementById("likesChart"), {
+      type: "line",
+      data: { labels, datasets: [{ label: "Likes", data: likes }] }
+    }
+  );
 
-  viewsChart=new Chart(document.getElementById("viewsChart"),{
-    type:"line",
-    data:{labels,datasets:[{label:"Views",data:views,borderColor:"blue",tension:0.3}]},
-    options:{responsive:true, plugins:{legend:{position:"top"}}, scales:{y:{beginAtZero:true}}}
-  });
-
-  likesChart=new Chart(document.getElementById("likesChart"),{
-    type:"line",
-    data:{labels,datasets:[{label:"Likes",data:likes,borderColor:"red",tension:0.3}]},
-    options:{responsive:true, plugins:{legend:{position:"top"}}, scales:{y:{beginAtZero:true}}}
-  });
-
-  commentsChart=new Chart(document.getElementById("commentsChart"),{
-    type:"bar",
-    data:{labels,datasets:[{label:"Comments",data:comments,backgroundColor:"green"}]},
-    options:{responsive:true, plugins:{legend:{position:"top"}}, scales:{y:{beginAtZero:true}}}
-  });
-}
+  commentsChart = new Chart(
+    document.getElementById("commentsChart"), {
+      type: "bar",
+      data: { labels, datasets: [{ label: "Comments", data: comments }] }
+    }
+  );
+};
 </script>
 
 </body>
