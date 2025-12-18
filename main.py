@@ -7,7 +7,6 @@ import os
 API_KEY = os.getenv("YOUTUBE_API_KEY")
 
 app = FastAPI()
-
 app.mount("/static", StaticFiles(directory="static"), name="static")
 
 
@@ -17,50 +16,73 @@ def home():
 
 
 @app.get("/search")
-def search(query: str, start: str, end: str):
-    search_url = (
-        "https://www.googleapis.com/youtube/v3/search"
-        f"?part=snippet&type=video&maxResults=1000"
-        f"&q={query}"
-        f"&publishedAfter={start}T00:00:00Z"
-        f"&publishedBefore={end}T23:59:59Z"
-        f"&key={API_KEY}"
-    )
+def search(
+    query: str,
+    start: str,
+    end: str,
+    page_token: str | None = None
+):
+    # 1️⃣ SEARCH VIDEOS (50 per request – YouTube limit)
+    search_params = {
+        "part": "snippet",
+        "type": "video",
+        "q": query,
+        "publishedAfter": f"{start}T00:00:00Z",
+        "publishedBefore": f"{end}T23:59:59Z",
+        "maxResults": 50,
+        "key": API_KEY
+    }
 
-    search_res = requests.get(search_url, timeout=30).json()
+    if page_token:
+        search_params["pageToken"] = page_token
 
-    video_ids = []
-    for item in search_res.get("items", []):
-        video_ids.append(item["id"]["videoId"])
+    search_res = requests.get(
+        "https://www.googleapis.com/youtube/v3/search",
+        params=search_params,
+        timeout=30
+    ).json()
+
+    video_ids = [
+        item["id"]["videoId"]
+        for item in search_res.get("items", [])
+        if item["id"].get("videoId")
+    ]
 
     if not video_ids:
-        return {"videos": [], "total": 0}
+        return {
+            "videos": [],
+            "nextPageToken": None,
+            "total": 0
+        }
 
-    stats_url = (
-        "https://www.googleapis.com/youtube/v3/videos"
-        f"?part=statistics,snippet"
-        f"&id={','.join(video_ids)}"
-        f"&key={API_KEY}"
-    )
-
-    stats_res = requests.get(stats_url, timeout=30).json()
+    # 2️⃣ FETCH STATS
+    stats_res = requests.get(
+        "https://www.googleapis.com/youtube/v3/videos",
+        params={
+            "part": "statistics,snippet",
+            "id": ",".join(video_ids),
+            "key": API_KEY
+        },
+        timeout=30
+    ).json()
 
     videos = []
-
     for v in stats_res.get("items", []):
-        snippet = v["snippet"]
-        stats = v.get("statistics", {})
+        s = v["snippet"]
+        st = v.get("statistics", {})
 
         videos.append({
-            "title": snippet["title"],
-            "channel": snippet["channelTitle"],
-            "published": snippet["publishedAt"][:10],
-            "views": int(stats.get("viewCount", 0)),
-            "likes": int(stats.get("likeCount", 0)),
-            "comments": int(stats.get("commentCount", 0)),
+            "title": s["title"],
+            "channel": s["channelTitle"],
+            "published": s["publishedAt"][:10],
+            "views": int(st.get("viewCount", 0)),
+            "likes": int(st.get("likeCount", 0)),
+            "comments": int(st.get("commentCount", 0)),
+            "url": f"https://www.youtube.com/watch?v={v['id']}"
         })
 
     return {
         "videos": videos,
+        "nextPageToken": search_res.get("nextPageToken"),
         "total": len(videos)
     }
