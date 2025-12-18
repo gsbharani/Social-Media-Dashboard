@@ -176,19 +176,74 @@ function renderCharts(videos) {
 
   viewChart = new Chart(document.getElementById("viewsChart"), {
     type: "line",
-    data: { labels, datasets: [{ label: "Views", data: views }] }
-  });
+    data: { labels, datasets: [{ label: "Views", data: videos.map(v => v.views),
+        borderWidth: 2
+      }]
+    },
+    options: {
+      plugins: {
+        tooltip: {
+          callbacks: {
+            title: (items) => {
+              const index = items[0].dataIndex;
+              return videos[index].title; // 👈 VIDEO TITLE
+            },
+            label: (item) => {
+              return `Views: ${item.formattedValue}`;
+            }
+          }
+        }
+      }
+    }
+  }
+);
 
   likeChart = new Chart(document.getElementById("likesChart"), {
     type: "line",
-    data: { labels, datasets: [{ label: "Likes", data: likes }] }
-  });
-
+    data: { labels, datasets: [{ label: "Likes",data: videos.map(v => v.likes),
+        borderWidth: 2
+      }]
+    },
+    options: {
+      plugins: {
+        tooltip: {
+          callbacks: {
+            title: (items) => {
+              const index = items[0].dataIndex;
+              return videos[index].title; // 👈 VIDEO TITLE
+            },
+            label: (item) => {
+              return `Likes: ${item.formattedValue}`;
+            }
+          }
+        }
+      }
+    }
+  }
+);
   commentChart = new Chart(document.getElementById("commentsChart"), {
     type: "bar",
-    data: { labels, datasets: [{ label: "Comments", data: comments }] }
-  });
-}
+    data: { labels, datasets: [{ label: "Comments", data: videos.map(v => v.comments),
+        borderWidth: 2
+      }]
+    },
+    options: {
+      plugins: {
+        tooltip: {
+          callbacks: {
+            title: (items) => {
+              const index = items[0].dataIndex;
+              return videos[index].title; // 👈 VIDEO TITLE
+            },
+            label: (item) => {
+              return `Comments: ${item.formattedValue}`;
+            }
+          }
+        }
+      }
+    }
+  }
+);}
 
 /* ===== Summary ===== */
 function updateSummary(videos) {
