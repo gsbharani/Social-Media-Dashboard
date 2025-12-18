@@ -63,6 +63,7 @@
         <th class="p-2">Views</th>
         <th class="p-2">Likes</th>
         <th class="p-2">Comments</th>
+        <th class="p-2">Link</th>
       </tr>
     </thead>
     <tbody id="tbody"></tbody>
@@ -120,6 +121,9 @@ function renderTable(){
       <td class="p-2">${v.views}</td>
       <td class="p-2">${v.likes}</td>
       <td class="p-2">${v.comments}</td>
+      <td class="p-2 text-blue-600 hover:underline">
+        <a href="https://youtu.be/${v.video_id}" target="_blank">Watch</a>
+      </td>
     </tr>
   `).join("");
 }
