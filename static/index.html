@@ -83,97 +83,147 @@
   <h3 class="font-semibold mb-2">Comments Trend</h3>
   <canvas id="commentsChart" height="120"></canvas>
 </div>
-
 <script>
-let videos = [];
-let viewsChart, likesChart, commentsChart;
-const today = new Date().toISOString().split("T")[0];
-document.getElementById("end").value = today;
-setPreset(7);
+let allVideos = [];
+let nextPageToken = null;
 
-function setPreset(days){
-  document.getElementById("start").value =
-    new Date(Date.now() - days*86400000).toISOString().split("T")[0];
-}
+const loading = document.getElementById("loading");
+const tableBody = document.getElementById("tbody");
 
-document.getElementById("loadBtn").onclick = async () => {
-  document.getElementById("loading").classList.remove("hidden");
-  const q = document.getElementById("query").value;
-  const s = document.getElementById("start").value;
-  const e = document.getElementById("end").value;
-  const res = await fetch(`/search?query=${encodeURIComponent(q)}&start=${s}&end=${e}`);
-  const data = await res.json();
-  videos = data.videos || [];
-  document.getElementById("loading").classList.add("hidden");
-
-  renderTable();
-  updateSummary();
-  renderKeywords();
-  drawCharts();
+document.getElementById("loadBtn").onclick = () => {
+  allVideos = [];
+  nextPageToken = null;
+  tableBody.innerHTML = "";
+  fetchVideos();
 };
 
-function renderTable(){
-  document.getElementById("tbody").innerHTML = videos.map(v=>`
-    <tr class="border-t">
+async function fetchVideos() {
+  const query = document.getElementById("query").value.trim();
+  const start = document.getElementById("start").value;
+  const end = document.getElementById("end").value;
+
+  if (!query || !start || !end) {
+    alert("Enter keyword and date range");
+    return;
+  }
+
+  loading.classList.remove("hidden");
+
+  let url = `/search?query=${encodeURIComponent(query)}&start=${start}&end=${end}`;
+  if (nextPageToken) {
+    url += `&page_token=${nextPageToken}`;
+  }
+
+  try {
+    const res = await fetch(url);
+    const data = await res.json();
+
+    nextPageToken = data.nextPageToken || null;
+    allVideos = allVideos.concat(data.videos || []);
+
+    renderTable(allVideos);
+    renderCharts(allVideos);
+    updateSummary(allVideos);
+    updateKeywords(allVideos);
+
+  } catch (e) {
+    alert("Error loading videos");
+  } finally {
+    loading.classList.add("hidden");
+  }
+}
+function setPreset(days) {
+  const end = new Date();
+  const start = new Date();
+  start.setDate(end.getDate() - days);
+
+  document.getElementById("end").value =
+    end.toISOString().split("T")[0];
+  document.getElementById("start").value =
+    start.toISOString().split("T")[0];
+}
+
+function renderTable(videos) {
+  tableBody.innerHTML = videos.map(v => `
+    <tr class="border-b">
       <td class="p-2">${v.title}</td>
       <td class="p-2">${v.channel}</td>
-      <td class="p-2">${v.published}</td>
-      <td class="p-2">${v.views}</td>
-      <td class="p-2">${v.likes}</td>
-      <td class="p-2">${v.comments}</td>
-      <td class="p-2 text-blue-600 hover:underline">
-        <a href="https://youtu.be/${v.video_id}" target="_blank">Watch</a>
+      <td class="p-2 text-center">${v.published}</td>
+      <td class="p-2 text-right">${v.views}</td>
+      <td class="p-2 text-right">${v.likes}</td>
+      <td class="p-2 text-right">${v.comments}</td>
+      <td class="p-2 text-center">
+        <a href="${v.url}" target="_blank" class="text-blue-600 underline">Open</a>
       </td>
     </tr>
   `).join("");
 }
 
-function updateSummary(){
-  let views=0, likes=0, comments=0;
-  videos.forEach(v => { views+=v.views; likes+=v.likes; comments+=v.comments; });
-  sumVideos.textContent = videos.length;
-  sumViews.textContent = views.toLocaleString();
-  sumLikes.textContent = likes.toLocaleString();
-  sumComments.textContent = comments.toLocaleString();
+/* ===== Charts ===== */
+let viewChart, likeChart, commentChart;
+
+function renderCharts(videos) {
+  const labels = videos.map(v => v.published);
+  const views = videos.map(v => v.views);
+  const likes = videos.map(v => v.likes);
+  const comments = videos.map(v => v.comments);
+
+  [viewChart, likeChart, commentChart].forEach(c => c && c.destroy());
+
+  viewChart = new Chart(document.getElementById("viewsChart"), {
+    type: "line",
+    data: { labels, datasets: [{ label: "Views", data: views }] }
+  });
+
+  likeChart = new Chart(document.getElementById("likesChart"), {
+    type: "line",
+    data: { labels, datasets: [{ label: "Likes", data: likes }] }
+  });
+
+  commentChart = new Chart(document.getElementById("commentsChart"), {
+    type: "bar",
+    data: { labels, datasets: [{ label: "Comments", data: comments }] }
+  });
 }
 
-function renderKeywords(){
-  const freq = {};
-  videos.forEach(v=>v.title.toLowerCase().split(" ").forEach(w=>{ if(w.length>4) freq[w]=(freq[w]||0)+1; }));
+/* ===== Summary ===== */
+function updateSummary(videos) {
+  document.getElementById("sumVideos").textContent = videos.length;
+  document.getElementById("sumViews").textContent =
+    videos.reduce((a,v)=>a+v.views,0);
+  document.getElementById("sumLikes").textContent =
+    videos.reduce((a,v)=>a+v.likes,0);
+  document.getElementById("sumComments").textContent =
+    videos.reduce((a,v)=>a+v.comments,0);
+}
+
+/* ===== Keywords ===== */
+function updateKeywords(videos) {
+  const words = {};
+  videos.forEach(v => {
+    v.title.split(" ").forEach(w => {
+      if (w.length > 4) words[w] = (words[w] || 0) + 1;
+    });
+  });
+
   document.getElementById("keywords").innerHTML =
-    Object.entries(freq).sort((a,b)=>b[1]-a[1]).slice(0,12)
-    .map(([w])=>`<span class="px-3 py-1 bg-blue-100 rounded">${w}</span>`).join("");
+    Object.entries(words)
+      .sort((a,b)=>b[1]-a[1])
+      .slice(0,10)
+      .map(([w])=>`<span class="bg-gray-200 px-3 py-1 rounded">${w}</span>`)
+      .join("");
 }
 
-function drawCharts(){
-  viewsChart?.destroy(); likesChart?.destroy(); commentsChart?.destroy();
-  const labels = videos.map(v=>v.published);
+/* ===== Export ===== */
+document.getElementById("exportBtn").onclick = () => {
+  if (!allVideos.length) return alert("No data to export");
 
-  viewsChart = new Chart(document.getElementById("viewsChart"), {
-    type:"line",
-    data:{labels,datasets:[{label:"Views", data: videos.map(v=>v.views), borderWidth:2}]},
-    options:{plugins:{tooltip:{callbacks:{title: (items)=> videos[items[0].dataIndex].title, label: (item)=>`Views: ${item.formattedValue}`}}}}
+  let csv = "Title,Channel,Date,Views,Likes,Comments,URL\n";
+  allVideos.forEach(v => {
+    csv += `"${v.title.replace(/"/g,'""')}","${v.channel}","${v.published}",${v.views},${v.likes},${v.comments},"${v.url}"\n`;
   });
 
-  likesChart = new Chart(document.getElementById("likesChart"), {
-    type:"line",
-    data:{labels,datasets:[{label:"Likes", data: videos.map(v=>v.likes), borderWidth:2}]},
-    options:{plugins:{tooltip:{callbacks:{title: (items)=> videos[items[0].dataIndex].title, label: (item)=>`Likes: ${item.formattedValue}`}}}}
-  });
-
-  commentsChart = new Chart(document.getElementById("commentsChart"), {
-    type:"line",
-    data:{labels,datasets:[{label:"Comments", data: videos.map(v=>v.comments), borderWidth:2}]},
-    options:{plugins:{tooltip:{callbacks:{title: (items)=> videos[items[0].dataIndex].title, label: (item)=>`Comments: ${item.formattedValue}`}}}}
-  });
-}
-
-document.getElementById("exportBtn").onclick = ()=>{
-  let csv = "Title,Channel,Date,Views,Likes,Comments\n";
-  videos.forEach(v=>{
-    csv+=`"${v.title}","${v.channel}",${v.published},${v.views},${v.likes},${v.comments}\n`;
-  });
-  const blob = new Blob([csv], {type:"text/csv"});
+  const blob = new Blob(["\ufeff" + csv], { type: "text/csv" });
   const a = document.createElement("a");
   a.href = URL.createObjectURL(blob);
   a.download = "tn_politics_dashboard.csv";
