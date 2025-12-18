@@ -70,6 +70,13 @@
   </table>
 </div>
 
+<!-- Load More Button -->
+<div class="mt-4 text-center">
+  <button id="loadMoreBtn" class="bg-yellow-600 text-white px-6 py-2 rounded hidden">
+    Load More
+  </button>
+</div>
+
 <!-- Charts -->
 <div class="bg-white p-4 rounded shadow mt-6">
   <h3 class="font-semibold mb-2">Views Trend</h3>
@@ -83,6 +90,7 @@
   <h3 class="font-semibold mb-2">Comments Trend</h3>
   <canvas id="commentsChart" height="120"></canvas>
 </div>
+
 <script>
 let allVideos = [];
 let nextPageToken = null;
@@ -94,6 +102,10 @@ document.getElementById("loadBtn").onclick = () => {
   allVideos = [];
   nextPageToken = null;
   tableBody.innerHTML = "";
+  fetchVideos();
+};
+
+document.getElementById("loadMoreBtn").onclick = () => {
   fetchVideos();
 };
 
@@ -110,9 +122,7 @@ async function fetchVideos() {
   loading.classList.remove("hidden");
 
   let url = `/search?query=${encodeURIComponent(query)}&start=${start}&end=${end}`;
-  if (nextPageToken) {
-    url += `&page_token=${nextPageToken}`;
-  }
+  if (nextPageToken) url += `&page_token=${nextPageToken}`;
 
   try {
     const res = await fetch(url);
@@ -126,21 +136,15 @@ async function fetchVideos() {
     updateSummary(allVideos);
     updateKeywords(allVideos);
 
+    // Show/Hide Load More button
+    document.getElementById("loadMoreBtn").classList.toggle("hidden", !nextPageToken);
+
   } catch (e) {
     alert("Error loading videos");
+    console.error(e);
   } finally {
     loading.classList.add("hidden");
   }
-}
-function setPreset(days) {
-  const end = new Date();
-  const start = new Date();
-  start.setDate(end.getDate() - days);
-
-  document.getElementById("end").value =
-    end.toISOString().split("T")[0];
-  document.getElementById("start").value =
-    start.toISOString().split("T")[0];
 }
 
 function renderTable(videos) {
@@ -214,7 +218,7 @@ function updateKeywords(videos) {
       .join("");
 }
 
-/* ===== Export ===== */
+/* ===== Export CSV ===== */
 document.getElementById("exportBtn").onclick = () => {
   if (!allVideos.length) return alert("No data to export");
 
@@ -229,6 +233,15 @@ document.getElementById("exportBtn").onclick = () => {
   a.download = "tn_politics_dashboard.csv";
   a.click();
 };
+
+/* ===== Date Presets ===== */
+function setPreset(days) {
+  const end = new Date();
+  const start = new Date();
+  start.setDate(end.getDate() - days);
+  document.getElementById("start").value = start.toISOString().split('T')[0];
+  document.getElementById("end").value = end.toISOString().split('T')[0];
+}
 </script>
 </body>
 </html>
