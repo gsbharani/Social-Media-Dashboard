@@ -1,14 +1,12 @@
 <!DOCTYPE html>
 <html lang="en">
 <head>
-  <meta charset="UTF-8" />
-  <title>TN Politics YouTube Dashboard</title>
+  <meta charset="UTF-8">
+  <title>TN Politics Dashboard</title>
   <meta name="viewport" content="width=device-width, initial-scale=1.0"/>
-
   <script src="https://cdn.tailwindcss.com"></script>
   <script src="https://cdn.jsdelivr.net/npm/chart.js"></script>
 </head>
-
 <body class="bg-gray-100 p-6">
 
 <h1 class="text-3xl font-bold mb-6">
@@ -17,59 +15,35 @@
 
 <!-- Controls -->
 <div class="bg-white p-4 rounded shadow flex flex-wrap gap-3 items-end">
-
-  <input id="query" type="text"
-         class="border p-2 rounded w-64"
-         value="Tamil Nadu politics" />
-
-  <input id="start" type="date" class="border p-2 rounded" />
-  <input id="end" type="date" class="border p-2 rounded" />
-
-  <button onclick="setPreset(7)"
-          class="px-3 py-2 bg-gray-200 rounded">7 Days</button>
-
-  <button onclick="setPreset(30)"
-          class="px-3 py-2 bg-gray-200 rounded">30 Days</button>
-
-  <button id="loadBtn"
-          class="bg-blue-600 text-white px-6 py-2 rounded">
-    Load Data
-  </button>
-
-  <button id="exportBtn"
-          class="bg-green-600 text-white px-6 py-2 rounded">
-    Export CSV
-  </button>
+  <input id="query" type="text" class="border p-2 rounded w-64" value="Tamil Nadu politics"/>
+  <input id="start" type="date" class="border p-2 rounded"/>
+  <input id="end" type="date" class="border p-2 rounded"/>
+  <button onclick="setPreset(7)" class="px-3 py-2 bg-gray-200 rounded">7 Days</button>
+  <button onclick="setPreset(30)" class="px-3 py-2 bg-gray-200 rounded">30 Days</button>
+  <button id="loadBtn" class="bg-blue-600 text-white px-6 py-2 rounded">Load Data</button>
+  <button id="exportBtn" class="bg-green-600 text-white px-6 py-2 rounded">Export CSV</button>
 </div>
 
-<div id="loading"
-     class="hidden mt-4 text-blue-600 font-semibold">
-  Loading videos...
-</div>
+<div id="loading" class="hidden mt-4 text-blue-600 font-semibold">Loading videos...</div>
 
 <!-- Summary Cards -->
 <div class="grid grid-cols-2 md:grid-cols-4 gap-4 mt-6">
-
   <div class="bg-white p-4 rounded shadow text-center">
     <p class="text-gray-500">Videos</p>
     <p id="sumVideos" class="text-2xl font-bold">0</p>
   </div>
-
   <div class="bg-white p-4 rounded shadow text-center">
     <p class="text-gray-500">Total Views</p>
     <p id="sumViews" class="text-2xl font-bold text-blue-600">0</p>
   </div>
-
   <div class="bg-white p-4 rounded shadow text-center">
     <p class="text-gray-500">Total Likes</p>
     <p id="sumLikes" class="text-2xl font-bold text-green-600">0</p>
   </div>
-
   <div class="bg-white p-4 rounded shadow text-center">
     <p class="text-gray-500">Total Comments</p>
     <p id="sumComments" class="text-2xl font-bold text-purple-600">0</p>
   </div>
-
 </div>
 
 <!-- Trending Keywords -->
@@ -95,17 +69,15 @@
   </table>
 </div>
 
-<!-- Chart -->
+<!-- Charts -->
 <div class="bg-white p-4 rounded shadow mt-6">
   <h3 class="font-semibold mb-2">Views Trend</h3>
   <canvas id="viewsChart" height="120"></canvas>
 </div>
-
 <div class="bg-white p-4 rounded shadow mt-6">
   <h3 class="font-semibold mb-2">Likes Trend</h3>
   <canvas id="likesChart" height="120"></canvas>
 </div>
-
 <div class="bg-white p-4 rounded shadow mt-6">
   <h3 class="font-semibold mb-2">Comments Trend</h3>
   <canvas id="commentsChart" height="120"></canvas>
@@ -113,29 +85,23 @@
 
 <script>
 let videos = [];
-let chart;
-
+let viewsChart, likesChart, commentsChart;
 const today = new Date().toISOString().split("T")[0];
 document.getElementById("end").value = today;
 setPreset(7);
 
-function setPreset(days) {
+function setPreset(days){
   document.getElementById("start").value =
-    new Date(Date.now() - days * 86400000)
-      .toISOString()
-      .split("T")[0];
+    new Date(Date.now() - days*86400000).toISOString().split("T")[0];
 }
 
 document.getElementById("loadBtn").onclick = async () => {
   document.getElementById("loading").classList.remove("hidden");
-
   const q = document.getElementById("query").value;
   const s = document.getElementById("start").value;
   const e = document.getElementById("end").value;
-
   const res = await fetch(`/search?query=${encodeURIComponent(q)}&start=${s}&end=${e}`);
   const data = await res.json();
-
   videos = data.videos || [];
   document.getElementById("loading").classList.add("hidden");
 
@@ -145,8 +111,8 @@ document.getElementById("loadBtn").onclick = async () => {
   drawCharts();
 };
 
-function renderTable() {
-  document.getElementById("tbody").innerHTML = videos.map(v => `
+function renderTable(){
+  document.getElementById("tbody").innerHTML = videos.map(v=>`
     <tr class="border-t">
       <td class="p-2">${v.title}</td>
       <td class="p-2">${v.channel}</td>
@@ -158,103 +124,57 @@ function renderTable() {
   `).join("");
 }
 
-function updateSummary() {
-  let views = 0, likes = 0, comments = 0;
-  videos.forEach(v => {
-    views += v.views;
-    likes += v.likes;
-    comments += v.comments;
-  });
+function updateSummary(){
+  let views=0, likes=0, comments=0;
+  videos.forEach(v => { views+=v.views; likes+=v.likes; comments+=v.comments; });
   sumVideos.textContent = videos.length;
   sumViews.textContent = views.toLocaleString();
   sumLikes.textContent = likes.toLocaleString();
   sumComments.textContent = comments.toLocaleString();
 }
 
-function renderKeywords() {
+function renderKeywords(){
   const freq = {};
-  videos.forEach(v => {
-    v.title.toLowerCase().split(" ").forEach(w => {
-      if (w.length > 4) freq[w] = (freq[w] || 0) + 1;
-    });
-  });
-
+  videos.forEach(v=>v.title.toLowerCase().split(" ").forEach(w=>{ if(w.length>4) freq[w]=(freq[w]||0)+1; }));
   document.getElementById("keywords").innerHTML =
-    Object.entries(freq)
-      .sort((a, b) => b[1] - a[1])
-      .slice(0, 12)
-      .map(([w]) => `<span class="px-3 py-1 bg-blue-100 rounded">${w}</span>`)
-      .join("");
+    Object.entries(freq).sort((a,b)=>b[1]-a[1]).slice(0,12)
+    .map(([w])=>`<span class="px-3 py-1 bg-blue-100 rounded">${w}</span>`).join("");
 }
 
-let viewsChart, likesChart, commentsChart;
+function drawCharts(){
+  viewsChart?.destroy(); likesChart?.destroy(); commentsChart?.destroy();
+  const labels = videos.map(v=>v.published);
 
-function drawCharts() {
-  viewsChart?.destroy();
-  likesChart?.destroy();
-  commentsChart?.destroy();
-
-  const labels = videos.map(v => v.published);
-
-  viewsChart = new Chart(
-    document.getElementById("viewsChart"),
-    {
-      type: "line",
-      data: {
-        labels,
-        datasets: [{
-          label: "Views",
-          data: videos.map(v => v.views),
-          borderWidth: 2
-        }]
-      }
-    }
-  );
-
-  likesChart = new Chart(
-    document.getElementById("likesChart"),
-    {
-      type: "line",
-      data: {
-        labels,
-        datasets: [{
-          label: "Likes",
-          data: videos.map(v => v.likes),
-          borderWidth: 2
-        }]
-      }
-    }
-  );
-
-  commentsChart = new Chart(
-    document.getElementById("commentsChart"),
-    {
-      type: "line",
-      data: {
-        labels,
-        datasets: [{
-          label: "Comments",
-          data: videos.map(v => v.comments),
-          borderWidth: 2
-        }]
-      }
-    }
-  );
-}
-
-
-document.getElementById("exportBtn").onclick = () => {
-  let csv = "Title,Channel,Date,Views,Likes,Comments\n";
-  videos.forEach(v => {
-    csv += `"${v.title}","${v.channel}",${v.published},${v.views},${v.likes},${v.comments}\n`;
+  viewsChart = new Chart(document.getElementById("viewsChart"), {
+    type:"line",
+    data:{labels,datasets:[{label:"Views", data: videos.map(v=>v.views), borderWidth:2}]},
+    options:{plugins:{tooltip:{callbacks:{title: (items)=> videos[items[0].dataIndex].title, label: (item)=>`Views: ${item.formattedValue}`}}}}
   });
-  const blob = new Blob([csv], { type: "text/csv" });
+
+  likesChart = new Chart(document.getElementById("likesChart"), {
+    type:"line",
+    data:{labels,datasets:[{label:"Likes", data: videos.map(v=>v.likes), borderWidth:2}]},
+    options:{plugins:{tooltip:{callbacks:{title: (items)=> videos[items[0].dataIndex].title, label: (item)=>`Likes: ${item.formattedValue}`}}}}
+  });
+
+  commentsChart = new Chart(document.getElementById("commentsChart"), {
+    type:"line",
+    data:{labels,datasets:[{label:"Comments", data: videos.map(v=>v.comments), borderWidth:2}]},
+    options:{plugins:{tooltip:{callbacks:{title: (items)=> videos[items[0].dataIndex].title, label: (item)=>`Comments: ${item.formattedValue}`}}}}
+  });
+}
+
+document.getElementById("exportBtn").onclick = ()=>{
+  let csv = "Title,Channel,Date,Views,Likes,Comments\n";
+  videos.forEach(v=>{
+    csv+=`"${v.title}","${v.channel}",${v.published},${v.views},${v.likes},${v.comments}\n`;
+  });
+  const blob = new Blob([csv], {type:"text/csv"});
   const a = document.createElement("a");
   a.href = URL.createObjectURL(blob);
   a.download = "tn_politics_dashboard.csv";
   a.click();
 };
 </script>
-
 </body>
 </html>
