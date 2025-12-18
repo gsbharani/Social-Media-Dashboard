@@ -20,7 +20,7 @@ def home():
 def search(query: str, start: str, end: str):
     search_url = (
         "https://www.googleapis.com/youtube/v3/search"
-        f"?part=snippet&type=video&maxResults=25"
+        f"?part=snippet&type=video&maxResults=1000"
         f"&q={query}"
         f"&publishedAfter={start}T00:00:00Z"
         f"&publishedBefore={end}T23:59:59Z"
